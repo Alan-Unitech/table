@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸福喜宴 - 桌次與座位查詢系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Noto Serif TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wedding: {
+                            wine: '#7A1C32',
+                            wineDark: '#5E1324',
+                            gold: '#D4AF37',
+                            goldLight: '#F3E5AB',
+                            rose: '#F9F1F2',
+                            roseAccent: '#E8C5C8',
+                            darkText: '#2D2D2D'
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Noto Serif TC"', 'serif'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Serif TC', sans-serif;
+            background-color: #FAF6F6;
+            color: #2D2D2D;
+        }
+        .gold-border {
+            border: 1px solid rgba(212, 175, 55, 0.4);
+        }
+        .gold-glow:focus {
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
+            border-color: #D4AF37;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-wedding-gold selection:text-white">
+
+    <!-- 頂部喜氣橫幅 -->
+    <header class="bg-gradient-to-r from-wedding-wineDark via-wedding-wine to-wedding-wineDark text-white shadow-lg relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#D4AF37_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        <div class="max-w-5xl mx-auto px-4 py-8 text-center relative z-10">
+            <div class="inline-flex items-center justify-center space-x-2 mb-2 text-wedding-goldLight">
+                <i class="fa-solid fa-heart text-sm animate-pulse"></i>
+                <span class="tracking-widest uppercase text-xs font-semibold">Wedding Seating Query</span>
+                <i class="fa-solid fa-heart text-sm animate-pulse"></i>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-serif font-bold tracking-wide text-wedding-goldLight mb-2">
+                &mdash; 劉彭喜宴 座位導引 &mdash;
+            </h1>
+            <p class="text-sm sm:text-base text-wedding-rose opacity-90 font-light">
+                尋找您的專屬席位，共享喜悅時刻
+            </p>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-8 space-y-8">
+        
+        <!-- 搜尋列與功能按鈕 -->
+        <div class="bg-white rounded-2xl shadow-md p-6 gold-border relative">
+            <div class="absolute -top-3 left-6 bg-wedding-wine text-wedding-goldLight px-3 py-0.5 rounded-full text-xs font-serif tracking-wider shadow">
+                快速查詢
+            </div>
+            
+            <div class="mt-2 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <!-- 搜尋輸入框 -->
+                <div class="relative w-full">
+                    <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-wedding-wine">
+                        <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                    </span>
+                    <input type="text" id="searchInput" 
+                        class="w-full pl-12 pr-10 py-3.5 bg-wedding-rose/50 border border-wedding-roseAccent rounded-xl text-wedding-darkText placeholder-gray-400 focus:outline-none gold-glow transition text-base sm:text-lg"
+                        placeholder="請輸入姓名、桌名或桌次（例如：王小明、主桌、第1桌）...">
+                    <button id="clearSearchBtn" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-wedding-wine hidden">
+                        <i class="fa-solid fa-circle-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- 資料管理按鈕 -->
+                <div class="flex items-center gap-2 w-full md:w-auto justify-end flex-shrink-0">
+                    <button onclick="resetToDefault()" title="恢復預設範例" class="p-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm transition" aria-label="恢復預設範例">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 搜尋提示小標 -->
+            <div class="mt-3 flex items-center justify-between text-xs text-gray-500 px-1">
+                <span id="searchStats">提示：可輸入任意關鍵字，系統會即時過濾符合的賓客與桌次。</span>
+                <span id="totalSeatingCount" class="font-medium text-wedding-wine"></span>
+            </div>
+        </div>
+
+        <!-- 搜尋結果顯示區 -->
+        <section>
+            <div class="flex items-center justify-between mb-4 px-1">
+                <h2 class="text-lg font-serif font-bold text-wedding-wine flex items-center">
+                    <i class="fa-solid fa-list-ul mr-2 text-wedding-gold"></i>桌次座位列表
+                </h2>
+                <div id="resultCountBadge" class="text-xs bg-wedding-wine/10 text-wedding-wine px-2.5 py-1 rounded-full font-medium">
+                    顯示全部
+                </div>
+            </div>
+
+            <div id="resultsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- 動態生成的卡片會放在這裡 -->
+            </div>
+
+            <!-- 無搜尋結果提示 -->
+            <div id="noResults" class="hidden bg-white rounded-2xl p-12 text-center shadow-sm gold-border">
+                <div class="w-16 h-16 bg-wedding-rose text-wedding-wine rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                    <i class="fa-solid fa-face-frowning"></i>
+                </div>
+                <h3 class="text-lg font-bold text-wedding-darkText mb-1">找不到相關賓客或桌次</h3>
+                <p class="text-sm text-gray-500 mb-4">請嘗試其他關鍵字，或確認輸入的姓名是否正確。</p>
+                <button onclick="clearSearch()" class="px-4 py-2 bg-wedding-wine text-white text-sm rounded-xl shadow hover:bg-wedding-wineDark transition">
+                    清除搜尋條件
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 編輯/匯入資料 Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-wedding-gold/30 animate-in fade-in zoom-in duration-200">
+            <!-- Modal 標題 -->
+            <div class="bg-wedding-wine text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="font-serif font-bold text-lg text-wedding-goldLight flex items-center">
+                    <i class="fa-solid fa-database mr-2"></i>編輯與匯入婚宴資料
+                </h3>
+                <button onclick="closeEditModal()" class="text-wedding-goldLight hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal 內容 -->
+            <div class="p-6 overflow-y-auto space-y-4 flex-grow">
+                <div class="bg-wedding-rose/60 p-4 rounded-xl text-xs text-wedding-darkText leading-relaxed border border-wedding-roseAccent">
+                    <p class="font-semibold text-wedding-wine mb-1"><i class="fa-solid fa-circle-info mr-1"></i>資料格式說明：</p>
+                    <p>每行代表一桌，格式為：<code class="bg-white px-1.5 py-0.5 rounded text-wedding-wine font-mono font-bold">桌次 | 桌名 | 賓客姓名1, 賓客姓名2, 賓客姓名3...</code></p>
+                    <p class="mt-1 text-gray-500">（分隔符號可用逗號、頓號或空格區隔賓客姓名；欄位之間可用直立線 <code class="font-bold">|</code> 或逗號分隔）</p>
+                </div>
+
+                <div>
+                    <label for="dataTextArea" class="block text-sm font-medium text-wedding-darkText mb-1">貼上或直接修改下方資料：</label>
+                    <textarea id="dataTextArea" rows="10" 
+                        class="w-full p-4 font-mono text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-wedding-gold/50 text-gray-800 leading-relaxed"
+                        placeholder="第1桌 | 新人主桌 | 新郎, 新娘, 主婚人, 雙方父母"></textarea>
+                </div>
+
+                <div class="flex flex-wrap gap-2 pt-2">
+                    <button onclick="loadTemplateSample()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-lg transition font-medium">
+                        <i class="fa-solid fa-file-arrow-down mr-1"></i>載入標準範本
+                    </button>
+                    <button onclick="exportData()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-lg transition font-medium">
+                        <i class="fa-solid fa-file-arrow-up mr-1"></i>匯出備份文字
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal 底部按鈕 -->
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex items-center justify-end space-x-3">
+                <button onclick="closeEditModal()" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-xl transition">
+                    取消
+                </button>
+                <button onclick="saveAndApplyData()" class="px-6 py-2.5 bg-wedding-wine hover:bg-wedding-wineDark text-white text-sm font-semibold rounded-xl shadow transition">
+                    儲存並更新系統
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 頁尾 -->
+    <footer class="bg-wedding-darkText text-white/70 py-6 text-center text-xs mt-12 border-t border-wedding-gold/20">
+        <div class="max-w-4xl mx-auto px-4 space-y-2">
+            <p class="font-serif tracking-widest text-wedding-goldLight">Forever Love Wedding Celebration</p>
+            <p></p>
+        </div>
+    </footer>
+
+    <!-- JavaScript 邏輯 -->
+    <script>
+        // 預設婚宴範例資料
+        const DEFAULT_WEDDING_DATA = [
+            { tableNo: "主桌", tableName: "新人主桌", guests: ["劉家齊", "劉念先", "游素惠", "游鴻圖", "黃有木"] },
+            { tableNo: "第2桌", tableName: "男方素桌", guests: ["劉祐君", "劉祐君 (2)", "劉祐君 (3)", "劉祐君 (4)", "劉祐君 (5)", "劉志中", "劉志中 (2)", "劉志中 (3)", "劉志中 (4)", "劉志中 (5)", "劉愛菊"] },
+            { tableNo: "第10桌", tableName: "男方家人A", guests: ["劉仁揚 (1)", "劉仁揚 (2)", "劉為光 (1)", "劉為光 (2)", "劉志一 (1)", "劉志一 (2)", "簡瑤 (1)", "簡瑤 (2)", "簡瑤 (3)", "媒婆"] }, 
+            { tableNo: "第11桌", tableName: "男方家人B", guests: ["游志雄 (1)", "游志雄 (2)", "游志雄 (3)", "游瑞菁", "游瑞茹", "游淵達", "游忠勳", "游尹樑 (1)", "游尹樑 (2)", "黃文昭"] },
+            { tableNo: "第12桌", tableName: "男方家人C", guests: ["黃怡芳 1", "黃怡芳 2", "黃怡芳 3", "黃怡芳 4", "黃怡芳 5", "黃怡芳 6", "黃怡芳 7", "黃怡芳 8", "黃怡芳 9", "黃怡芳 10"] },
+            { tableNo: "第3桌", tableName: "男方家人D", guests: ["呂秀子 1", "呂秀子 2", "呂秀子 3", "呂秀子 4", "呂秀子 5", "呂秀子 6 (小孩座)", "呂芳順 (1)", "呂芳順 (2)", "呂芳奇 (1)", "呂芳奇 (2)"] }, 
+			{ tableNo: "第5桌", tableName: "男方家人E", guests: ["呂秀雪 (1)", "呂秀雪 (2)", "呂秀雪 (3)", "呂秀雪 (4)", "呂秀雪 (5)", "呂秀美 (1)", "呂秀美 (2)", "劉家竹 (1)", "劉家竹 (2)", "劉家竹 (3)"] },
+			{ tableNo: "第6桌", tableName: "陳總", guests: ["陳武郎 (1)", "陳武郎 (2)", "詹愛玉 (1)", "詹愛玉 (2)", "許佑安 (1)", "許佑安 (2)", "鄭祥麟", "吳孟修", "簡飛 (1, 素)", "簡飛 (2, 素)"] },
+			{ tableNo: "第13桌", tableName: "帳務中心A", guests: ["張力人 (1)", "張力人 (2)", "洪珩 (1)", "洪珩 (2)", "羅會深", "劉兆華 (1)", "劉兆華 (2)", "吳泗重", "蔡應治", "梁蜀東"] },
+			{ tableNo: "第14桌", tableName: "帳務中心B", guests: ["江自志", "廖耶慶", "馮小平", "嵇恆輝 (1)", "嵇恆輝 (2, 素)", "趙椿齡", "李春樂 (1)", "李春樂 (2)", "林弘毓 (1)", "林弘毓 (2)"] },
+			{ tableNo: "第7桌", tableName: "帳務中心C", guests: ["譚鏡艾 (1)", "譚鏡艾 (2)", "馮環藻", "羅健強", "金亞輝", "張蓉蓉", "蔣銘燈 (1)", "蔣銘燈 (2)", "姚志文 (1)", "姚志文 (2)"] },
+			{ tableNo: "第8桌", tableName: "帳務中心D", guests: ["鄒學忠", "蔡之霖 (1)", "蔡之霖 (2)", "張守敬", "俞歐隆 (1)", "俞歐隆 (2)", "饒豈俊", "許水盛 (1)", "許水盛 (2)", "羅尉豪"] },
+			{ tableNo: "第9桌", tableName: "帳務中心E", guests: ["許世育", "彭仁彥", "傅韻華 (1)", "傅韻華 (2)", "王麗秋 (1)", "王麗秋 (2)", "黃麗鳳", "范秀蓉", "許甘燕", "宋秋瑛", "袁梅雲"] },
+			{ tableNo: "第29桌", tableName: "財經學校A", guests: ["林宗樑", "馬正熙 (1)", "馬正熙 (2)", "鄭祖平", "朱迺倫", "段家麒", "劉福生", "蔡錦誠", "陳恩華", "蘇煥章"] },
+			{ tableNo: "第28桌", tableName: "財經學校B", guests: ["張惠中 (1)", "張惠中 (2)", "洪祥偉", "袁巧生", "雷天明", "魏福祥", "王開強", "邵永翔", "莫國強", "唐迪俊 (1)", "唐迪俊 (2)"] },
+			{ tableNo: "第33桌", tableName: "財經學校C", guests: ["趙國基", "兆中華", "陳麒 (1)", "陳麒 (2)", "張雲峰", "喻長瀛 (1)", "喻長瀛 (2)", "駱鳳圖", "陳中方", "江忠國", "梁端武"] },
+			{ tableNo: "第30桌", tableName: "財經學校D", guests: ["康倫杰", "宋禮和", "廖道生", "周海明 (素)", "鍾洪忠", "羅會元", "陳天仁 (1)", "陳天仁 (2)", "李益輝", "王明芳"] },
+			{ tableNo: "第34桌", tableName: "財經學校E", guests: ["賀威毅", "陳文生 (1)", "陳文生 (2)", "王從平", "段偉宙", "王順龍", "李克中", "張國樑", "王一之", "吳舒耀"] },
+			{ tableNo: "第31桌", tableName: "精聯電子A", guests: ["徐志達", "王強", "陳泓棋", "李明學 (1)", "李明學 (2)", "陳振維 (1)", "陳振維 (2)", "林洋州 (1)", "林洋州 (2)", "秦舒凡"] },
+			{ tableNo: "第35桌", tableName: "精聯電子B", guests: ["林品旭", "葉庭瑄 (1)", "葉庭瑄 (2)", "葉庭瑄 (3)", "廖俞晶", "吳竣緯", "詹子漢", "謝志鋼", "蔡宏明"] },
+			{ tableNo: "第32桌", tableName: "FJUMath", guests: ["洪子勝 (1, 兒童椅)", "洪子勝 (2)", "洪子勝 (3)", "洪子勝 (4)", "謝孟諺 (1, 兒童椅)", "謝孟諺 (2)", "謝孟諺 (3)", "施致維 (1)", "施致維 (2)", "呂宗蔚", "林昭宏", "蔡依婷"] },
+			{ tableNo: "第36桌", tableName: "這不是品鼎殿", guests: ["洪于勝", "劉俊鴻 (1, 兒童椅)", "劉俊鴻 (2)", "劉俊鴻 (3)", "施世賢 (1, 兒童椅)", "施世賢 (2)", "施世賢 (3)", "陳建宏 (1)", "陳建宏 (2)"] }
+
+        ];
+
+        let weddingData = [];
+
+        // 初始化
+        function initApp() {
+            const savedData = localStorage.getItem('wedding_seating_data');
+            if (savedData) {
+                try {
+                    weddingData = JSON.parse(savedData);
+                } catch (e) {
+                    weddingData = DEFAULT_WEDDING_DATA;
+                }
+            } else {
+                weddingData = DEFAULT_WEDDING_DATA;
+                saveToLocalStorage();
+            }
+            renderResults(weddingData);
+            updateTotalCount();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('wedding_seating_data', JSON.stringify(weddingData));
+        }
+
+        // 渲染卡片結果
+        function renderResults(dataToRender, highlightKeyword = "") {
+            const container = document.getElementById('resultsContainer');
+            const noResultsEl = document.getElementById('noResults');
+            const resultBadge = document.getElementById('resultCountBadge');
+            
+            container.innerHTML = '';
+
+            if (dataToRender.length === 0) {
+                noResultsEl.classList.remove('hidden');
+                resultBadge.textContent = '找到 0 桌';
+                return;
+            } else {
+                noResultsEl.classList.add('hidden');
+                resultBadge.textContent = `共 ${dataToRender.length} 桌`;
+            }
+
+            dataToRender.forEach((table, index) => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition gold-border flex flex-col justify-between relative overflow-hidden group";
+                
+                // 裝飾性背景圖騰
+                card.innerHTML = `
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-wedding-rose/50 rounded-bl-full -z-0 pointer-events-none transition group-hover:bg-wedding-roseAccent/60"></div>
+                    
+                    <div class="relative z-10">
+                        <!-- 桌次與桌名 -->
+                        <div class="flex items-start justify-between mb-4 pb-3 border-b border-wedding-rose">
+                            <div>
+                                <span class="inline-block bg-wedding-wine text-wedding-goldLight text-xs font-serif font-bold px-3 py-1 rounded-full shadow-sm mb-1.5">
+                                    ${escapeHtml(table.tableNo)}
+                                </span>
+                                <h3 class="text-xl font-serif font-bold text-wedding-darkText">
+                                    ${highlightText(table.tableName, highlightKeyword)}
+                                </h3>
+                            </div>
+                            <div class="text-right text-xs text-gray-400 font-medium pt-1">
+                                <i class="fa-solid fa-users mr-1 text-wedding-gold"></i>${table.guests.length} 位賓客
+                            </div>
+                        </div>
+
+                        <!-- 賓客名單 -->
+                        <div class="mb-2">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">同桌賓客名單：</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                ${table.guests.map(guest => {
+                                    const isMatch = highlightKeyword && (
+                                        guest.toLowerCase().includes(highlightKeyword.toLowerCase()) ||
+                                        table.tableNo.toLowerCase().includes(highlightKeyword.toLowerCase()) ||
+                                        table.tableName.toLowerCase().includes(highlightKeyword.toLowerCase())
+                                    );
+                                    const badgeClass = isMatch 
+                                        ? "bg-wedding-wine text-wedding-goldLight font-bold ring-2 ring-wedding-gold shadow-sm px-3 py-1 rounded-xl text-sm" 
+                                        : "bg-wedding-rose/70 text-wedding-darkText hover:bg-wedding-roseAccent/50 px-2.5 py-1 rounded-lg text-sm";
+                                    return `<span class="${badgeClass} transition">${escapeHtml(guest)}</span>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 文字安全跳脫
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // 簡單關鍵字高亮
+        function highlightText(text, keyword) {
+            if (!keyword) return escapeHtml(text);
+            const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+            return escapeHtml(text).replace(regex, '<span class="bg-wedding-gold/40 text-wedding-wine px-1 rounded font-bold">$1</span>');
+        }
+
+        // 總人數計算
+        function updateTotalCount() {
+            let totalTables = weddingData.length;
+            let totalGuests = weddingData.reduce((sum, t) => sum + t.guests.length, 0);
+            document.getElementById('totalSeatingCount').textContent = `總計：${totalTables} 桌 / 共 ${totalGuests} 位賓客`;
+        }
+
+        // 搜尋列即時監聽
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query.length > 0) {
+                clearSearchBtn.classList.remove('hidden');
+            } else {
+                clearSearchBtn.classList.add('hidden');
+            }
+
+            if (!query) {
+                renderResults(weddingData);
+                return;
+            }
+
+            // 過濾邏輯：符合桌次、桌名、或是任何一位賓客姓名包含關鍵字
+            const filtered = weddingData.filter(table => {
+                const matchTableNo = table.tableNo.toLowerCase().includes(query.toLowerCase());
+                const matchTableName = table.tableName.toLowerCase().includes(query.toLowerCase());
+                const matchGuest = table.guests.some(g => g.toLowerCase().includes(query.toLowerCase()));
+                return matchTableNo || matchTableName || matchGuest;
+            });
+
+            renderResults(filtered, query);
+        });
+
+        function clearSearch() {
+            searchInput.value = '';
+            clearSearchBtn.classList.add('hidden');
+            renderResults(weddingData);
+            searchInput.focus();
+        }
+
+        clearSearchBtn.addEventListener('click', clearSearch);
+
+        // Modal 相關控制
+        function openEditModal() {
+            const textArea = document.getElementById('dataTextArea');
+            // 將目前的 weddingData 轉成文字格式放入 textarea
+            let textOutput = weddingData.map(t => {
+                return `${t.tableNo} | ${t.tableName} | ${t.guests.join(', ')}`;
+            }).join('\n');
+            textArea.value = textOutput;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        // 載入預設範本到 textarea
+        function loadTemplateSample() {
+            const sampleText = 
+`主桌 | 新人主桌 | 王曉明 (新郎), 李美玲 (新娘), 王大山, 陳秀英, 李國華, 林淑芬
+第1桌 | 男方長輩親戚桌 | 王伯伯, 王伯母, 叔叔 王建國, 嬸嬸 張雅婷, 堂哥 王冠宇, 堂姊 王怡君
+第2桌 | 女方長輩親戚桌 | 舅舅 李志明, 舅媽 吳美惠, 阿姨 李雅琪, 表哥 張偉翔, 表妹 張婷婷
+第3桌 | 大學摯友同窗桌 | 陳志強, 林郁婷, 黃柏翰, 張凱翔, 郭冠廷, 蔡佳玲, 鄭宇軒, 謝欣妤`;
+            document.getElementById('dataTextArea').value = sampleText;
+        }
+
+        // 匯出目前資料
+        function exportData() {
+            const textArea = document.getElementById('dataTextArea');
+            textArea.select();
+            document.execCommand('copy');
+            alert('已成功將資料複製到剪貼簿！');
+        }
+
+        // 儲存並解析文字
+        function saveAndApplyData() {
+            const rawText = document.getElementById('dataTextArea').value;
+            const lines = rawText.split('\n');
+            const newTableData = [];
+
+            for (let line of lines) {
+                if (!line.trim()) continue;
+                // 支援以 | 或逗號解析
+                let parts = line.split('|');
+                if (parts.length >= 3) {
+                    let tableNo = parts[0].trim();
+                    let tableName = parts[1].trim();
+                    let guestsStr = parts.slice(2).join(','); // 剩餘部分視為賓客
+                    let guests = guestsStr.split(/[,，、]/).map(g => g.trim()).filter(g => g.length > 0);
+                    newTableData.push({ tableNo, tableName, guests });
+                } else {
+                    // 若無用 | 分隔，嘗試自動解析第一欄為桌次
+                    let commaParts = line.split(/[,，]/);
+                    if (commaParts.length >= 2) {
+                        let tableNo = commaParts[0].trim();
+                        let tableName = commaParts[1].trim();
+                        let guests = commaParts.slice(2).map(g => g.trim()).filter(g => g.length > 0);
+                        newTableData.push({ tableNo, tableName, guests });
+                    }
+                }
+            }
+
+            if (newTableData.length > 0) {
+                weddingData = newTableData;
+                saveToLocalStorage();
+                renderResults(weddingData);
+                updateTotalCount();
+                closeEditModal();
+                // 顯示成功提示
+                searchInput.value = '';
+                clearSearchBtn.classList.add('hidden');
+            } else {
+                alert('解析格式有誤，請確認每行至少包含「桌次 | 桌名 | 賓客1, 賓客2」。');
+            }
+        }
+
+        // 恢復預設範例
+        function resetToDefault() {
+            if (confirm('確定要恢復預設的婚宴範例資料嗎？')) {
+                weddingData = DEFAULT_WEDDING_DATA;
+                saveToLocalStorage();
+                renderResults(weddingData);
+                updateTotalCount();
+                searchInput.value = '';
+                clearSearchBtn.classList.add('hidden');
+            }
+        }
+
+        // 網頁載入時初始化
+        window.onload = function() {
+            initApp();
+        };
+    </script>
+</body>
+</html>
